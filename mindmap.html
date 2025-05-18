@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大模型技术栈思维导图</title>
+    
+    <!-- 解决favicon问题 -->
+    <link rel="icon" href="data:,">
+    
+    <!-- 引入必要的库 -->
+    <script src="https://cdn.jsdelivr.net/npm/d3@6.7.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/markmap-view@0.14.3/dist/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/markmap-lib@0.14.3/dist/browser/index.min.js"></script>
+    
+    <style>
+        /* 基础样式 */
+        :root {
+            --primary-color: #165DFF;
+            --secondary-color: #36CBCB;
+            --accent-color: #7C3AED;
+            --success-color: #10B981;
+            --text-color: #333;
+            --border-color: #ddd;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            color: var(--text-color);
+        }
+
+        /* 头部样式 */
+        .header {
+            background: white;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        /* 搜索框样式 */
+        .search-container {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .search-input {
+            flex: 1;
+            max-width: 300px;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(22, 93, 255, 0.1);
+        }
+
+        /* 思维导图容器 */
+        .mindmap-container {
+            height: calc(100vh - 80px);
+            margin: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+            position: relative;
+        }
+
+        #mindmap {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Markmap 样式优化 */
+        .markmap-node {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .markmap-node-circle {
+            fill: #fff;
+            stroke: var(--primary-color);
+            stroke-width: 1.5px;
+            transition: all 0.3s ease;
+        }
+
+        .markmap-node-text {
+            fill: var(--text-color);
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .markmap-link {
+            stroke: #999;
+            stroke-width: 1.5px;
+            transition: all 0.3s ease;
+        }
+
+        /* 加载动画 */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 1rem 2rem;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .mindmap-container {
+                margin: 10px;
+                height: calc(100vh - 60px);
+            }
+
+            .search-input {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="search-container">
+            <input 
+                type="text" 
+                id="search-input" 
+                class="search-input" 
+                placeholder="搜索知识点..." 
+                aria-label="搜索知识点输入框"
+            >
+        </div>
+    </header>
+
+    <div class="mindmap-container">
+        <svg id="mindmap"></svg>
+        <div class="loading" id="loading">加载中...</div>
+    </div>
+
+    <script>
+        // 使用 Markdown 格式的思维导图数据
+        const markdown = `
+# 大模型全流程技术栈
+
+## 一、大模型基础技术体系
+- [AI演进：从AI1.0到AI2.0](https://arxiv.org/abs/2303.18223)
+- [大模型分类：通用/国产/开源](https://huggingface.co/models)
+- [Transformer架构解析](https://jalammar.github.io/illustrated-transformer/)
+- [预训练技术：SFT/RLHF](https://arxiv.org/abs/2003.05586)
+
+## 二、检索增强生成（RAG）
+- 核心范式：香草RAG/分层RAG/GraphRAG
+- [技术链路：文档分块→向量化→检索→生成](https://python.langchain.com/docs/modules/data_connection/retrievers/)
+- [向量数据库：Milvus/Chroma/FAISS](https://milvus.io/)
+- [商业化痛点：幻觉控制/长上下文处理](https://www.pinecone.io/learn/rag-faq/)
+
+## 三、LangChain开发框架
+- 核心组件：LLMs/Prompts/Tools/Memory
+- [Chain类型：RetrievalQA/LLMChain](https://python.langchain.com/docs/modules/chains/)
+- [工具调用：SQL/Google Search](https://github.com/langchain-ai/langchain/blob/master/docs/modules/tools/)
+- [内存管理：短期记忆/长期记忆](https://python.langchain.com/docs/modules/memory/)
+
+## 四、AI Agent技术架构
+- 核心循环：感知-规划-执行-反思
+- [类型：单工具代理/多步规划代理/多智能体](https://github.com/Significant-Gravitas/AutoGPT)
+- [关键技术：Function Calling/记忆管理](https://openai.com/blog/function-calling)
+- [多智能体：MetaGPT/AutoGen](https://github.com/geekan/MetaGPT)
+
+## 五、技术栈整合实战
+- [RAG+LangChain+Agent联合架构](https://github.com/imartinez/privateGPT)
+- [企业级应用：智能客服/数据分析](https://www.kaggle.com/competitions/retrieval-augmented-generation-challenge)
+- [部署方案：Docker/云原生](https://ollama.ai/docs/)
+
+## 六、未来趋势与挑战
+- [技术方向：多模态RAG/具身Agent](https://arxiv.org/abs/2310.05692)
+- [工程挑战：算力优化/可解释性](https://github.com/TimDettmers/bitsandbytes)
+
+## 七、开源学习资源
+- [框架库：Hugging Face/LangChain](https://huggingface.co/)
+- [实战项目：privateGPT/AutoGPT](https://github.com/imartinez/privateGPT)
+- [学习社区：Stack Overflow/Reddit](https://stackoverflow.com/questions/tagged/langchain)
+`;
+
+        // 错误处理函数
+        function handleError(error) {
+            console.error('发生错误：', error);
+            const loading = document.getElementById('loading');
+            loading.textContent = '加载失败，请刷新页面重试';
+            loading.classList.add('active');
+        }
+
+        // 初始化思维导图
+        async function initMindmap() {
+            try {
+                const loading = document.getElementById('loading');
+                loading.classList.add('active');
+
+                // 等待所有脚本加载完成
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                // 使用 markmap-lib 解析 markdown
+                const { Transformer } = window.markmap;
+                const transformer = new Transformer();
+                
+                // 转换 markdown 为思维导图数据
+                const { root: data } = transformer.transform(markdown);
+
+                // 创建思维导图实例
+                const { Markmap } = window.markmap;
+                const svg = document.querySelector('#mindmap');
+                
+                const mm = Markmap.create(svg, {
+                    autoFit: true,
+                    color: (node) => {
+                        const colors = ['#165DFF', '#36CBCB', '#7C3AED', '#10B981'];
+                        return colors[node.depth % colors.length];
+                    },
+                    duration: 500,
+                    maxWidth: 300,
+                    initialExpandLevel: 2,
+                    nodeMinHeight: 16,
+                    spacingVertical: 5,
+                    spacingHorizontal: 80,
+                    paddingX: 8,
+                    autoFit: true,
+                    fitRatio: 0.95,
+                }, data);
+
+                // 搜索功能增强
+                const searchInput = document.querySelector('#search-input');
+                let debounceTimer;
+
+                searchInput.addEventListener('input', (e) => {
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(() => {
+                        const searchTerm = e.target.value.toLowerCase();
+                        if (!searchTerm) {
+                            mm.fit(); // 重置视图
+                            return;
+                        }
+
+                        const allNodes = document.querySelectorAll('.markmap-node');
+                        let hasMatch = false;
+
+                        allNodes.forEach(node => {
+                            const text = node.querySelector('.markmap-node-text');
+                            if (text) {
+                                const content = text.textContent.toLowerCase();
+                                if (content.includes(searchTerm)) {
+                                    text.style.fontWeight = 'bold';
+                                    text.style.fill = '#f00';
+                                    hasMatch = true;
+                                    
+                                    // 展开到根节点
+                                    let current = node;
+                                    while (current && !current.classList.contains('markmap-root')) {
+                                        const foldButton = current.querySelector('.markmap-fold');
+                                        if (foldButton && getComputedStyle(foldButton).display !== 'none') {
+                                            foldButton.click();
+                                        }
+                                        current = current.parentElement;
+                                    }
+                                } else {
+                                    text.style.fontWeight = 'normal';
+                                    text.style.fill = '#333';
+                                }
+                            }
+                        });
+
+                        if (hasMatch) {
+                            mm.fit();
+                        }
+                    }, 300);
+                });
+
+                // 自适应大小处理
+                const resizeObserver = new ResizeObserver(() => {
+                    requestAnimationFrame(() => mm.fit());
+                });
+                resizeObserver.observe(svg.parentElement);
+
+                // 移除加载提示
+                loading.classList.remove('active');
+
+            } catch (error) {
+                handleError(error);
+            }
+        }
+
+        // 页面加载完成后初始化
+        window.addEventListener('load', initMindmap);
+
+        // 全局错误处理
+        window.addEventListener('error', (e) => {
+            handleError(e.error);
+        });
+    </script>
+</body>
+</html> 
