@@ -85,8 +85,6 @@
             position: sticky;
             top: 0;
             z-index: 100;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
         }
 
         /* 搜索框样式 */
@@ -106,27 +104,24 @@
             border-radius: 4px;
             font-size: 14px;
             transition: all 0.3s ease;
-            background: rgba(255, 255, 255, 0.9);
+            background: #fff;
         }
 
         .search-input:focus {
             outline: none;
             border-color: var(--primary-color);
             box-shadow: 0 0 0 2px rgba(22, 93, 255, 0.1);
-            background: rgba(255, 255, 255, 1);
         }
 
         /* 思维导图容器 */
         .mindmap-container {
             height: calc(100vh - 80px);
             margin: 20px;
-            background: rgba(255, 255, 255, 0.9);
+            background: #fff;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             overflow: hidden;
             position: relative;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
         }
 
         #mindmap {
@@ -140,20 +135,11 @@
             transition: all 0.3s ease;
         }
 
-        .markmap-node:hover {
-            transform: scale(1.05);
-        }
-
         .markmap-node-circle {
             fill: #fff;
             stroke: var(--primary-color);
             stroke-width: 1.5px;
             transition: all 0.3s ease;
-        }
-
-        .markmap-node:hover .markmap-node-circle {
-            stroke-width: 2.5px;
-            fill: rgba(22, 93, 255, 0.1);
         }
 
         .markmap-node-text {
@@ -162,20 +148,10 @@
             transition: all 0.3s ease;
         }
 
-        .markmap-node:hover .markmap-node-text {
-            font-weight: bold;
-            fill: var(--primary-color);
-        }
-
         .markmap-link {
             stroke: #999;
             stroke-width: 1.5px;
             transition: all 0.3s ease;
-        }
-
-        .markmap-node:hover + .markmap-link {
-            stroke: var(--primary-color);
-            stroke-width: 2px;
         }
 
         /* 加载动画 */
