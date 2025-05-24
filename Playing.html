@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>核心防御 - 游戏进行中</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            cursor: none; /* 隐藏光标 */
+        }
+
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        #infoPanel {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 300px;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 20px;
+            box-sizing: border-box;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .panel-section {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 5px;
+        }
+
+        .panel-section h2 {
+            margin: 0 0 10px 0;
+            font-size: 18px;
+            color: #4CAF50;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .power-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 5px 0;
+        }
+
+        .power-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .active {
+            background: #4CAF50;
+        }
+
+        .cooldown {
+            background: #FFA500;
+        }
+
+        .ready {
+            background: #fff;
+        }
+
+        .projectile-score {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 5px 0;
+        }
+
+        .projectile-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .controls {
+            margin-top: auto;
+            font-size: 12px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="infoPanel">
+        <div class="panel-section">
+            <h2>游戏信息</h2>
+            <div class="info-item">
+                <span>玩家：</span>
+                <span id="playerNickname">玩家</span>
+            </div>
+            <div class="info-item">
+                <span>分数：</span>
+                <span id="score">0</span>
+            </div>
+            <div class="info-item">
+                <span>生命值：</span>
+                <span id="health">100</span>
+            </div>
+            <div class="info-item">
+                <span>游戏速度：</span>
+                <span id="speed">1.0x</span>
+            </div>
+            <div class="info-item">
+                <span>游戏时间：</span>
+                <span id="time">0.0</span>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <h2>道具状态</h2>
+            <div class="power-status">
+                <div class="power-indicator" id="shieldStatus"></div>
+                <span>护盾 (空格键)</span>
+                <span id="shieldCooldown"></span>
+            </div>
+            <div class="power-status">
+                <div class="power-indicator" id="freezeStatus"></div>
+                <span>冻结 (F键)</span>
+                <span id="freezeCooldown"></span>
+            </div>
+            <div class="power-status">
+                <div class="power-indicator" id="doubleStatus"></div>
+                <span>双倍分数 (D键)</span>
+                <span id="doubleCooldown"></span>
+            </div>
+            <div class="power-status">
+                <div class="power-indicator" id="invincibleStatus"></div>
+                <span>无敌 (I键)</span>
+                <span id="invincibleCooldown"></span>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <h2>投射物分数</h2>
+            <div class="projectile-score">
+                <div class="projectile-dot" style="background: #ff0000"></div>
+                <span>红色：</span>
+                <span id="redScore">-10</span>
+            </div>
+            <div class="projectile-score">
+                <div class="projectile-dot" style="background: #00ff00"></div>
+                <span>绿色：</span>
+                <span id="greenScore">5</span>
+            </div>
+            <div class="projectile-score">
+                <div class="projectile-dot" style="background: #0000ff"></div>
+                <span>蓝色：</span>
+                <span id="blueScore">8</span>
+            </div>
+            <div class="projectile-score">
+                <div class="projectile-dot" style="background: #ffff00"></div>
+                <span>黄色：</span>
+                <span id="yellowScore">3</span>
+            </div>
+            <div class="projectile-score">
+                <div class="projectile-dot" style="background: #800080"></div>
+                <span>紫色：</span>
+                <span id="purpleScore">-6</span>
+            </div>
+            <div class="projectile-score">
+                <div class="projectile-dot" style="background: #000000"></div>
+                <span>黑色：</span>
+                <span id="blackScore">0</span>
+            </div>
+            <div class="info-item">
+                <span>分数变化倒计时：</span>
+                <span id="scoreChangeTimer">15.0s</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <p>ESC - 返回结算页面</p>
+            <p>Q - 返回模式选择</p>
+            <p>R - 重新开始</p>
+        </div>
+    </div>
+
+    <script>
+        // 游戏主逻辑代码
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 游戏状态
+        let gameState = {
+            score: 0,
+            health: 100,
+            speed: 1.0,
+            time: 0,
+            projectiles: [],
+            cores: [],
+            powers: {
+                shield: { active: false, cooldown: 0, uses: 3 },
+                freeze: { active: false, cooldown: 0, uses: 3 },
+                double: { active: false, cooldown: 0, uses: 3 },
+                invincible: { active: false, cooldown: 0, uses: 3 }
+            },
+            projectileScores: {
+                red: -10,
+                green: 5,
+                blue: 8,
+                yellow: 3,
+                purple: -6,
+                black: 0
+            },
+            mouseX: 0,
+            mouseY: 0,
+            lastProjectileTime: 0,
+            projectileInterval: 1000,
+            lastScoreChangeTime: 0,
+            scoreChangeInterval: 15000,
+            lastSpeedIncreaseTime: 0,
+            speedIncreaseInterval: 10000,
+            isGameRunning: false,
+            backgroundImage: new Image() // 添加背景图片对象
+        };
+
+        // 设置画布大小
+        function resizeCanvas() {
+            canvas.width = window.innerWidth - 300; // 减去信息面板宽度
+            canvas.height = window.innerHeight;
+        }
+
+        // 添加鼠标移动事件监听器
+        function setupEventListeners() {
+            canvas.addEventListener('mousemove', function(e) {
+                const rect = canvas.getBoundingClientRect();
+                gameState.mouseX = e.clientX - rect.left;
+                gameState.mouseY = e.clientY - rect.top;
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if (!gameState.isGameRunning) return;
+                
+                switch(e.key.toLowerCase()) {
+                    case ' ': // 空格键 - 护盾
+                        if (gameState.powers.shield.uses > 0 && gameState.powers.shield.cooldown <= 0) {
+                            activateShield();
+                        }
+                        break;
+                    case 'f': // F键 - 冻结
+                        if (gameState.powers.freeze.uses > 0 && gameState.powers.freeze.cooldown <= 0) {
+                            activateFreeze();
+                        }
+                        break;
+                    case 'd': // D键 - 双倍分数
+                        if (gameState.powers.double.uses > 0 && gameState.powers.double.cooldown <= 0) {
+                            activateDoubleScore();
+                        }
+                        break;
+                    case 'i': // I键 - 无敌
+                        if (gameState.powers.invincible.uses > 0 && gameState.powers.invincible.cooldown <= 0) {
+                            activateInvincible();
+                        }
+                        break;
+                    case 'escape': // ESC键 - 返回结算页面
+                        e.preventDefault(); // 阻止默认行为
+                        endGame();
+                        break;
+                    case 'q': // Q键 - 返回模式选择
+                        gameState.isGameRunning = false;
+                        window.location.href = 'Start.html';
+                        break;
+                    case 'r': // R键 - 重新开始
+                        gameState.isGameRunning = false;
+                        window.location.reload();
+                        break;
+                }
+            });
+        }
+
+        // 初始化游戏
+        function initGame() {
+            console.log('Initializing game...');
+            const mode = localStorage.getItem('gameMode') || 'EASY';
+            const nickname = localStorage.getItem('playerNickname') || '玩家';
+            
+            // 显示玩家昵称
+            document.getElementById('playerNickname').textContent = nickname;
+            
+            // 加载背景图片
+            gameState.backgroundImage.src = 'BG.png';
+            
+            // 确保画布尺寸已更新
+            resizeCanvas();
+            
+            // 根据模式设置核心
+            switch(mode) {
+                case 'EASY':
+                    gameState.cores = [{
+                        x: canvas.width / 2,
+                        y: canvas.height / 2,
+                        size: 20,
+                        nickname: nickname
+                    }];
+                    break;
+                case 'MEDIUM':
+                    gameState.cores = [
+                        {
+                            x: canvas.width / 3,
+                            y: canvas.height / 2,
+                            size: 20,
+                            nickname: nickname
+                        },
+                        {
+                            x: (canvas.width * 2) / 3,
+                            y: canvas.height / 2,
+                            size: 20,
+                            nickname: nickname
+                        }
+                    ];
+                    break;
+                case 'HARD':
+                    gameState.cores = [
+                        {
+                            x: canvas.width / 2,
+                            y: canvas.height / 3,
+                            size: 20,
+                            nickname: nickname
+                        },
+                        {
+                            x: canvas.width / 3,
+                            y: (canvas.height * 2) / 3,
+                            size: 20,
+                            nickname: nickname
+                        },
+                        {
+                            x: (canvas.width * 2) / 3,
+                            y: (canvas.height * 2) / 3,
+                            size: 20,
+                            nickname: nickname
+                        }
+                    ];
+                    break;
+            }
+
+            // 重置游戏状态
+            gameState.score = 0;
+            gameState.health = 100;
+            gameState.speed = 1.0;
+            gameState.time = 0;
+            gameState.projectiles = [];
+            gameState.powers = {
+                shield: { active: false, cooldown: 0, uses: 3 },
+                freeze: { active: false, cooldown: 0, uses: 3 },
+                double: { active: false, cooldown: 0, uses: 3 },
+                invincible: { active: false, cooldown: 0, uses: 3 }
+            };
+            gameState.lastProjectileTime = 0;
+            gameState.lastScoreChangeTime = 0;
+            gameState.lastSpeedIncreaseTime = 0;
+            gameState.isGameRunning = true;
+
+            // 初始化鼠标位置为中心点
+            gameState.mouseX = canvas.width / 2;
+            gameState.mouseY = canvas.height / 2;
+
+            console.log('Game initialized, starting game loop...');
+            // 启动游戏循环
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 生成投射体
+        function generateProjectile() {
+            const now = Date.now();
+            if (now - gameState.lastProjectileTime < gameState.projectileInterval) {
+                return;
+            }
+            gameState.lastProjectileTime = now;
+
+            // 随机选择生成位置（屏幕四边）
+            const side = Math.floor(Math.random() * 4);
+            let x, y;
+
+            // 根据边生成位置
+            switch(side) {
+                case 0: // 上边
+                    x = Math.random() * canvas.width;
+                    y = 0;
+                    break;
+                case 1: // 右边
+                    x = canvas.width;
+                    y = Math.random() * canvas.height;
+                    break;
+                case 2: // 下边
+                    x = Math.random() * canvas.width;
+                    y = canvas.height;
+                    break;
+                case 3: // 左边
+                    x = 0;
+                    y = Math.random() * canvas.height;
+                    break;
+            }
+
+            // 选择目标核心（最近或最远）
+            const targetType = Math.random() < 0.5 ? 'nearest' : 'furthest';
+            let targetCore;
+            let minDist = Infinity;
+            let maxDist = 0;
+            
+            gameState.cores.forEach(core => {
+                const dist = Math.sqrt(
+                    Math.pow(core.x - x, 2) + 
+                    Math.pow(core.y - y, 2)
+                );
+                if (targetType === 'nearest' && dist < minDist) {
+                    minDist = dist;
+                    targetCore = core;
+                } else if (targetType === 'furthest' && dist > maxDist) {
+                    maxDist = dist;
+                    targetCore = core;
+                }
+            });
+
+            // 计算方向
+            const dx = targetCore.x - x;
+            const dy = targetCore.y - y;
+            const length = Math.sqrt(dx * dx + dy * dy);
+            const speed = gameState.speed;
+
+            // 随机选择颜色
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#800080', '#000000'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+
+            // 创建投射体
+            const projectile = {
+                x: x,
+                y: y,
+                dx: (dx / length) * speed,
+                dy: (dy / length) * speed,
+                color: color,
+                size: 5,
+                originalColor: color,
+                creationTime: now,
+                changeColorTime: Math.random() * 5000 + 2000 // 2-7秒后变色
+            };
+
+            // 30%概率发生裂变
+            if (Math.random() < 0.3) {
+                projectile.willSplit = true;
+                projectile.splitTime = Math.random() * 2000 + 1000; // 1-3秒后裂变
+            }
+
+            gameState.projectiles.push(projectile);
+
+            // 限制最大投射体数量
+            if (gameState.projectiles.length > 20) {
+                gameState.projectiles.shift();
+            }
+        }
+
+        // 更新游戏状态
+        function updateGame() {
+            const now = Date.now();
+
+            // 更新游戏速度
+            if (now - gameState.lastSpeedIncreaseTime >= gameState.speedIncreaseInterval) {
+                gameState.speed = Math.min(8, gameState.speed + 0.2);
+                gameState.lastSpeedIncreaseTime = now;
+            }
+
+            // 更新分数变化
+            if (now - gameState.lastScoreChangeTime >= gameState.scoreChangeInterval) {
+                updateProjectileScores();
+                gameState.lastScoreChangeTime = now;
+            }
+
+            // 更新分数变化倒计时显示
+            const timeUntilNextChange = Math.max(0, gameState.scoreChangeInterval - (now - gameState.lastScoreChangeTime));
+            document.getElementById('scoreChangeTimer').textContent = (timeUntilNextChange / 1000).toFixed(1) + 's';
+
+            // 更新道具冷却
+            updatePowerCooldowns();
+
+            // 更新核心位置
+            if (gameState.cores && gameState.cores.length > 0) {
+                gameState.cores.forEach(core => {
+                    // 限制核心在画布范围内
+                    core.x = Math.max(core.size, Math.min(canvas.width - core.size, gameState.mouseX));
+                    core.y = Math.max(core.size, Math.min(canvas.height - core.size, gameState.mouseY));
+                });
+            }
+
+            // 生成投射体
+            if (now - gameState.lastProjectileTime >= gameState.projectileInterval) {
+                generateProjectile();
+                gameState.lastProjectileTime = now;
+            }
+
+            // 更新投射体
+            const projectilesToRemove = new Set();
+
+            for (let i = gameState.projectiles.length - 1; i >= 0; i--) {
+                const projectile = gameState.projectiles[i];
+
+                // 更新位置
+                if (!gameState.powers.freeze.active) {
+                    projectile.x += projectile.dx * gameState.speed;
+                    projectile.y += projectile.dy * gameState.speed;
+                }
+
+                // 检查变色
+                if (projectile.color !== '#ff0000' && now - projectile.creationTime >= projectile.changeColorTime) {
+                    const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#800080', '#000000'];
+                    const newColor = colors[Math.floor(Math.random() * colors.length)];
+                    projectile.color = newColor;
+                    projectile.originalColor = newColor;
+                }
+
+                // 检查裂变
+                if (projectile.willSplit && now - projectile.creationTime >= projectile.splitTime) {
+                    const splitCount = Math.floor(Math.random() * 4) + 2;
+                    for (let j = 0; j < splitCount; j++) {
+                        const angle = (Math.random() * 60 - 30) * Math.PI / 180;
+                        const cos = Math.cos(angle);
+                        const sin = Math.sin(angle);
+                        const newDx = projectile.dx * cos - projectile.dy * sin;
+                        const newDy = projectile.dx * sin + projectile.dy * cos;
+
+                        gameState.projectiles.push({
+                            x: projectile.x,
+                            y: projectile.y,
+                            dx: newDx * 1.5,
+                            dy: newDy * 1.5,
+                            color: projectile.color,
+                            size: projectile.size * 0.7,
+                            originalColor: projectile.originalColor,
+                            creationTime: now,
+                            changeColorTime: projectile.changeColorTime
+                        });
+                    }
+                    projectilesToRemove.add(i);
+                    continue;
+                }
+
+                // 检查是否击中核心
+                if (gameState.cores && gameState.cores.length > 0) {
+                    for (const core of gameState.cores) {
+                        const dx = projectile.x - core.x;
+                        const dy = projectile.y - core.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+
+                        if (distance < core.size) {
+                            // 处理得分
+                            if (!gameState.powers.shield.active) {
+                                const score = gameState.projectileScores[getColorName(projectile.color)];
+                                if (gameState.powers.double.active) {
+                                    gameState.score += score * 2;
+                                } else {
+                                    gameState.score += score;
+                                }
+                            }
+
+                            // 处理伤害
+                            if (projectile.color === '#ff0000' && !gameState.powers.shield.active && !gameState.powers.invincible.active) {
+                                const damage = gameState.powers.double.active ? 2 : 1;
+                                gameState.health -= damage;
+                                core.size += 5 * damage;
+                            }
+
+                            projectilesToRemove.add(i);
+                            break;
+                        }
+                    }
+                }
+
+                // 检查是否超出屏幕
+                if (projectile.x < -50 || projectile.x > canvas.width + 50 ||
+                    projectile.y < -50 || projectile.y > canvas.height + 50) {
+                    projectilesToRemove.add(i);
+                }
+            }
+
+            // 从后向前移除投射体
+            const sortedIndices = Array.from(projectilesToRemove).sort((a, b) => b - a);
+            for (const index of sortedIndices) {
+                gameState.projectiles.splice(index, 1);
+            }
+
+            // 更新游戏时间
+            gameState.time += 0.1;
+
+            // 检查游戏是否结束
+            if (gameState.health <= 0) {
+                endGame();
+            }
+        }
+
+        // 更新投射体分数
+        function updateProjectileScores() {
+            const colors = ['green', 'blue', 'yellow', 'purple', 'black'];
+            colors.forEach(color => {
+                if (color !== 'red') {
+                    const sign = Math.random() < 0.5 ? 1 : -1;
+                    const value = Math.floor(Math.random() * 11); // 0-10
+                    gameState.projectileScores[color] = sign * value;
+                    
+                    // 更新UI显示
+                    const scoreElement = document.getElementById(color + 'Score');
+                    if (scoreElement) {
+                        scoreElement.textContent = sign * value;
+                    }
+                }
+            });
+        }
+
+        // 获取颜色名称
+        function getColorName(color) {
+            const colorMap = {
+                '#ff0000': 'red',
+                '#00ff00': 'green',
+                '#0000ff': 'blue',
+                '#ffff00': 'yellow',
+                '#800080': 'purple',
+                '#000000': 'black'
+            };
+            return colorMap[color] || 'red';
+        }
+
+        // 格式化时间
+        function formatTime(time) {
+            // 将时间转换为秒数
+            const totalSeconds = Math.floor(time);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // 更新道具状态显示
+        function updatePowerStatus() {
+            Object.keys(gameState.powers).forEach(power => {
+                const status = document.getElementById(power + 'Status');
+                const cooldown = document.getElementById(power + 'Cooldown');
+                
+                if (gameState.powers[power].active) {
+                    status.className = 'power-indicator active';
+                    cooldown.textContent = '激活中';
+                } else if (gameState.powers[power].cooldown > 0) {
+                    status.className = 'power-indicator cooldown';
+                    cooldown.textContent = `${gameState.powers[power].cooldown.toFixed(1)}s (${gameState.powers[power].uses}次)`;
+                } else {
+                    status.className = 'power-indicator ready';
+                    cooldown.textContent = `就绪 (${gameState.powers[power].uses}次)`;
+                }
+            });
+        }
+
+        // 更新道具冷却时间
+        function updatePowerCooldowns() {
+            Object.keys(gameState.powers).forEach(power => {
+                if (gameState.powers[power].cooldown > 0) {
+                    gameState.powers[power].cooldown -= 0.1;
+                }
+            });
+        }
+
+        // 渲染游戏
+        function renderGame() {
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 绘制背景图片
+            if (gameState.backgroundImage.complete) {
+                ctx.drawImage(gameState.backgroundImage, 0, 0, canvas.width, canvas.height);
+            }
+
+            // 渲染投射体
+            gameState.projectiles.forEach(projectile => {
+                ctx.beginPath();
+                ctx.arc(projectile.x, projectile.y, projectile.size, 0, Math.PI * 2);
+                ctx.fillStyle = projectile.color;
+                ctx.fill();
+                ctx.closePath();
+            });
+
+            // 渲染核心
+            if (gameState.cores && gameState.cores.length > 0) {
+                gameState.cores.forEach(core => {
+                    // 绘制核心
+                    ctx.beginPath();
+                    ctx.arc(core.x, core.y, core.size, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fill();
+                    ctx.closePath();
+
+                    // 绘制核心边框
+                    ctx.beginPath();
+                    ctx.arc(core.x, core.y, core.size, 0, Math.PI * 2);
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.closePath();
+
+                    // 如果有护盾效果，绘制护盾光环
+                    if (gameState.powers.shield.active) {
+                        ctx.beginPath();
+                        ctx.arc(core.x, core.y, core.size + 10, 0, Math.PI * 2);
+                        ctx.strokeStyle = 'rgba(76, 175, 80, 0.5)';
+                        ctx.lineWidth = 3;
+                        ctx.stroke();
+                        ctx.closePath();
+                    }
+
+                    // 如果有无敌效果，绘制无敌光环
+                    if (gameState.powers.invincible.active) {
+                        ctx.beginPath();
+                        ctx.arc(core.x, core.y, core.size + 15, 0, Math.PI * 2);
+                        ctx.strokeStyle = 'rgba(255, 215, 0, 0.5)';
+                        ctx.lineWidth = 3;
+                        ctx.stroke();
+                        ctx.closePath();
+                    }
+                });
+            }
+
+            // 更新UI
+            document.getElementById('score').textContent = gameState.score;
+            document.getElementById('health').textContent = gameState.health;
+            document.getElementById('speed').textContent = gameState.speed.toFixed(1) + 'x';
+            document.getElementById('time').textContent = formatTime(gameState.time);
+
+            // 更新道具状态
+            updatePowerStatus();
+        }
+
+        // 游戏主循环
+        function gameLoop() {
+            if (!gameState.isGameRunning) return;
+            
+            updateGame();
+            renderGame();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 激活护盾
+        function activateShield() {
+            if (gameState.powers.shield.uses > 0 && gameState.powers.shield.cooldown <= 0) {
+                gameState.powers.shield.active = true;
+                gameState.powers.shield.uses--;
+                gameState.powers.shield.cooldown = 15; // 15秒冷却
+                setTimeout(() => {
+                    gameState.powers.shield.active = false;
+                }, 5000); // 5秒持续时间
+            }
+        }
+
+        // 激活冻结
+        function activateFreeze() {
+            if (gameState.powers.freeze.uses > 0 && gameState.powers.freeze.cooldown <= 0) {
+                gameState.powers.freeze.active = true;
+                gameState.powers.freeze.uses--;
+                gameState.powers.freeze.cooldown = 15; // 15秒冷却
+                setTimeout(() => {
+                    gameState.powers.freeze.active = false;
+                }, 5000); // 5秒持续时间
+            }
+        }
+
+        // 激活双倍分数
+        function activateDoubleScore() {
+            if (gameState.powers.double.uses > 0 && gameState.powers.double.cooldown <= 0) {
+                gameState.powers.double.active = true;
+                gameState.powers.double.uses--;
+                gameState.powers.double.cooldown = 20; // 20秒冷却
+                setTimeout(() => {
+                    gameState.powers.double.active = false;
+                }, 8000); // 8秒持续时间
+            }
+        }
+
+        // 激活无敌
+        function activateInvincible() {
+            if (gameState.powers.invincible.uses > 0 && gameState.powers.invincible.cooldown <= 0) {
+                gameState.powers.invincible.active = true;
+                gameState.powers.invincible.uses--;
+                gameState.powers.invincible.cooldown = 30; // 30秒冷却
+                setTimeout(() => {
+                    gameState.powers.invincible.active = false;
+                }, 3000); // 3秒持续时间
+            }
+        }
+
+        // 结束游戏
+        function endGame() {
+            if (!gameState.isGameRunning) return; // 防止重复调用
+            
+            gameState.isGameRunning = false;
+            
+            // 获取玩家信息
+            const playerNickname = localStorage.getItem('playerNickname');
+            if (!playerNickname) {
+                console.error('未找到玩家昵称');
+                window.location.href = 'Start.html';
+                return;
+            }
+            
+            // 保存游戏数据
+            const finalScore = Math.floor(gameState.score || 0);
+            const gameTime = Math.max(0, parseFloat(gameState.time || 0));
+            
+            console.log('保存游戏数据：', {
+                nickname: playerNickname,
+                score: finalScore,
+                time: gameTime
+            });
+            
+            // 保存最终得分和时间
+            localStorage.setItem('finalScore', finalScore.toString());
+            localStorage.setItem('gameTime', gameTime.toString());
+            
+            // 更新最高分
+            let highScores = [];
+            try {
+                const savedScores = localStorage.getItem('highScores');
+                console.log('读取到的历史记录：', savedScores);
+                
+                // 如果存在旧数据，尝试解析
+                if (savedScores) {
+                    try {
+                        highScores = JSON.parse(savedScores);
+                        // 检查是否是旧格式（数字数组）
+                        if (Array.isArray(highScores) && highScores.length > 0 && typeof highScores[0] === 'number') {
+                            console.log('检测到旧格式数据，重置为空数组');
+                            highScores = [];
+                        }
+                    } catch (error) {
+                        console.error('解析历史记录失败：', error);
+                        highScores = [];
+                    }
+                }
+                
+                // 确保highScores是数组
+                if (!Array.isArray(highScores)) {
+                    console.log('highScores不是数组，重置为空数组');
+                    highScores = [];
+                }
+            } catch (error) {
+                console.error('读取最高分失败：', error);
+                highScores = [];
+            }
+            
+            // 添加当前游戏记录
+            const currentScore = {
+                nickname: playerNickname,
+                score: finalScore,
+                time: gameTime,
+                timestamp: Date.now()
+            };
+            
+            console.log('添加新记录：', currentScore);
+            
+            // 保存所有记录
+            highScores.push(currentScore);
+            
+            // 按时间戳排序（从新到旧）
+            highScores.sort((a, b) => b.timestamp - a.timestamp);
+            
+            // 只保留最新的5条记录
+            highScores = highScores.slice(0, 5);
+            
+            // 保存更新后的排行榜
+            try {
+                const scoresString = JSON.stringify(highScores);
+                console.log('准备保存的数据：', scoresString);
+                localStorage.setItem('highScores', scoresString);
+                console.log('保存最高分成功：', highScores);
+            } catch (error) {
+                console.error('保存最高分失败：', error);
+            }
+            
+            // 跳转到结算页面
+            window.location.href = 'Gameover.html';
+        }
+
+        // 页面加载完成后初始化游戏
+        window.addEventListener('load', function() {
+            console.log('Page loaded, setting up game...');
+            setupEventListeners();
+            initGame();
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>游戏结算</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+        }
+
+        h1 {
+            color: #4CAF50;
+            margin-bottom: 2rem;
+        }
+
+        .score-info {
+            margin: 1rem 0;
+            font-size: 1.2rem;
+        }
+
+        .high-scores {
+            margin: 2rem 0;
+            text-align: left;
+        }
+
+        .high-scores h2 {
+            color: #4CAF50;
+            text-align: center;
+        }
+
+        .score-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .buttons {
+            margin-top: 2rem;
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        button {
+            padding: 0.8rem 1.5rem;
+            font-size: 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .restart {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .restart:hover {
+            background-color: #45a049;
+        }
+
+        .home {
+            background-color: #2196F3;
+            color: white;
+        }
+
+        .home:hover {
+            background-color: #1976D2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>游戏结束</h1>
+        
+        <div class="score-info">
+            <p>玩家：<span id="playerNickname">玩家</span></p>
+            <p>最终得分：<span id="finalScore">0</span></p>
+            <p>游戏时间：<span id="gameTime">0</span></p>
+        </div>
+
+        <div class="high-scores">
+            <h2>最高分排行榜</h2>
+            <div id="highScoresList"></div>
+        </div>
+
+        <div class="buttons">
+            <button class="restart" onclick="restartGame()">重新开始</button>
+            <button class="home" onclick="goHome()">返回主页</button>
+        </div>
+    </div>
+
+    <script>
+        // 格式化时间
+        function formatTime(time) {
+            // 将时间转换为秒数
+            const totalSeconds = Math.floor(time);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // 显示游戏数据
+        function displayGameData() {
+            try {
+                const finalScore = localStorage.getItem('finalScore') || '0';
+                const gameTime = localStorage.getItem('gameTime') || '0';
+                const playerNickname = localStorage.getItem('playerNickname') || '玩家';
+                
+                console.log('显示游戏数据：', {
+                    nickname: playerNickname,
+                    score: finalScore,
+                    time: gameTime
+                });
+                
+                document.getElementById('playerNickname').textContent = playerNickname;
+                document.getElementById('finalScore').textContent = finalScore;
+                document.getElementById('gameTime').textContent = formatTime(parseFloat(gameTime));
+            } catch (error) {
+                console.error('显示游戏数据时出错：', error);
+            }
+        }
+
+        // 显示最高分
+        function displayHighScores() {
+            try {
+                const savedScores = localStorage.getItem('highScores');
+                console.log('读取到的最高分数据：', savedScores);
+                
+                if (!savedScores) {
+                    console.log('没有找到保存的最高分数据');
+                    const highScoresList = document.getElementById('highScoresList');
+                    highScoresList.innerHTML = '<div class="score-item">暂无记录</div>';
+                    return;
+                }
+                
+                const highScores = JSON.parse(savedScores);
+                console.log('解析后的最高分数据：', highScores);
+                
+                const highScoresList = document.getElementById('highScoresList');
+                highScoresList.innerHTML = '';
+                
+                if (!Array.isArray(highScores) || highScores.length === 0) {
+                    console.log('最高分数据为空或不是数组');
+                    const noScores = document.createElement('div');
+                    noScores.className = 'score-item';
+                    noScores.textContent = '暂无记录';
+                    highScoresList.appendChild(noScores);
+                    return;
+                }
+
+                // 按时间戳排序（从新到旧）
+                highScores.sort((a, b) => b.timestamp - a.timestamp);
+
+                // 只显示最新的5条记录
+                highScores.slice(0, 5).forEach((score, index) => {
+                    console.log('处理第', index + 1, '条记录：', score);
+                    
+                    const scoreItem = document.createElement('div');
+                    scoreItem.className = 'score-item';
+                    
+                    // 确保所有值都有默认值
+                    const nickname = score.nickname || '玩家';
+                    const scoreValue = score.score || 0;
+                    const timeValue = parseFloat(score.time) || 0;
+                    
+                    // 根据分数设置颜色
+                    const scoreColor = scoreValue >= 0 ? '#4CAF50' : '#f44336';
+                    
+                    scoreItem.innerHTML = `
+                        <span>${index + 1}. ${nickname}</span>
+                        <span style="color: ${scoreColor}">${scoreValue}分 (${formatTime(timeValue)})</span>
+                    `;
+                    highScoresList.appendChild(scoreItem);
+                });
+            } catch (error) {
+                console.error('显示最高分时出错：', error);
+                const highScoresList = document.getElementById('highScoresList');
+                highScoresList.innerHTML = '<div class="score-item">加载失败</div>';
+            }
+        }
+
+        // 重新开始游戏
+        function restartGame() {
+            window.location.href = 'Playing.html';
+        }
+
+        // 返回主页
+        function goHome() {
+            window.location.href = 'Start.html';
+        }
+
+        // 页面加载完成后显示数据
+        window.addEventListener('load', function() {
+            try {
+                console.log('页面加载完成，开始显示数据');
+                displayGameData();
+                displayHighScores();
+            } catch (error) {
+                console.error('显示数据时出错：', error);
+            }
+        });
+    </script>
+</body>
+</html> 
