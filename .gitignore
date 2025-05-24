@@ -41,4 +41,12 @@ Thumbs.db
 
 # Logs
 *.log
-app.log 
+app.log
+
+# Large media files
+*.mp4
+*.mov
+*.avi
+*.wmv
+*.flv
+*.mkv 
