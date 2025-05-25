@@ -10,18 +10,18 @@ Version004 版本我将通过Trae构建一个MCP框架来完成编程.
 
 ## 在线预览
 
-访问 [https://[your-username].github.io/llm-mindmap/](https://[your-username].github.io/llm-mindmap/) 查看在线演示。
+访问 [https://howardhk991.github.io/BallGame/Playing.html]([https://howardhk991.github.io/BallGame/Playing.html]) 查看在线演示。
 
 ## 本地运行
 
 1. 克隆仓库：
 ```bash
-git clone https://github.com/[your-username]/llm-mindmap.git
+git clone (https://howardhk991.github.io/BallGame/Playing.html).git
 ```
 
 2. 进入项目目录：
 ```bash
-cd llm-mindmap
+cd BallGame
 ```
 
 3. 使用任意 HTTP 服务器运行，例如 Python 的 `http.server`：
