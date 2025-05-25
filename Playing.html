@@ -260,45 +260,66 @@
         /* 移动端适配 */
         @media (max-width: 768px) {
             #infoPanel {
-                width: 100%;
-                height: auto;
-                position: fixed;
-                bottom: 0;
-                top: auto;
-                padding: 10px;
-                font-size: 12px;
+                width: 120px !important;
+                height: auto !important;
+                position: fixed !important;
+                top: 10px !important;
+                right: 10px !important;
+                padding: 5px !important;
+                font-size: 10px !important;
+                background: rgba(0, 0, 0, 0.6) !important;
+                z-index: 1000 !important;
             }
 
             .panel-section {
-                padding: 8px;
-                margin-bottom: 5px;
+                padding: 5px !important;
+                margin-bottom: 3px !important;
             }
 
             .panel-section h2 {
-                font-size: 14px;
-                margin: 0 0 5px 0;
+                font-size: 12px !important;
+                margin: 0 0 3px 0 !important;
             }
 
             .info-item, .power-status, .projectile-score {
-                font-size: 12px;
-                margin: 3px 0;
+                font-size: 10px !important;
+                margin: 2px 0 !important;
             }
 
+            /* 隐藏不需要的面板 */
+            .panel-section:nth-child(3),
+            .panel-section:nth-child(4) {
+                display: none !important;
+            }
+
+            /* 调整游戏元素大小 */
             #gameCanvas {
-                width: 100%;
-                height: 100%;
+                width: 100% !important;
+                height: 100% !important;
             }
 
-            #bgToggle, #inertiaToggle, #colorToggle, #autoAvoid {
-                padding: 8px 15px;
-                font-size: 12px;
-                bottom: 10px;
+            /* 隐藏PC端按钮 */
+            #bgToggle, #inertiaToggle, #colorToggle,
+            #effectsPanel, .mobile-functions, .mobile-game-controls {
+                display: none !important;
             }
 
-            #bgToggle { left: 10px; }
-            #inertiaToggle { left: 120px; }
-            #colorToggle { left: 230px; }
-            #autoAvoid { left: 340px; }
+            /* 调整移动端控制按钮 */
+            .mobile-controls {
+                position: fixed !important;
+                bottom: 10px !important;
+                right: 10px !important;
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 5px !important;
+                z-index: 1000 !important;
+            }
+
+            .mobile-button {
+                width: 40px !important;
+                height: 40px !important;
+                font-size: 18px !important;
+            }
         }
 
         /* 虚拟摇杆样式 */
