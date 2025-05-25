@@ -931,20 +931,17 @@
             // 更新核心位置
             if (gameState.cores && gameState.cores.length > 0) {
                 gameState.cores.forEach(core => {
-                    // 设置目标位置
-                    core.targetX = Math.max(core.size, Math.min(canvas.width - core.size, gameState.mouseX));
-                    core.targetY = Math.max(core.size, Math.min(canvas.height - core.size, gameState.mouseY));
-                    
-                    // 根据惯性设置更新位置
-                    if (gameState.inertiaEnabled) {
-                        // 使用平滑移动
-                        core.x += (core.targetX - core.x) * gameState.coreSmoothing;
-                        core.y += (core.targetY - core.y) * gameState.coreSmoothing;
-                    } else {
-                        // 直接移动到目标位置
-                        core.x = core.targetX;
-                        core.y = core.targetY;
+                    if (!isMobileDevice()) {
+                        // PC端使用平滑移动
+                        if (gameState.inertiaEnabled) {
+                            core.x += (core.targetX - core.x) * gameState.coreSmoothing;
+                            core.y += (core.targetY - core.y) * gameState.coreSmoothing;
+                        } else {
+                            core.x = core.targetX;
+                            core.y = core.targetY;
+                        }
                     }
+                    // 移动端在touchmove事件中直接更新位置
                 });
             }
 
@@ -1573,8 +1570,9 @@
                 e.preventDefault();
                 isDragging = true;
                 const touch = e.touches[0];
-                lastTouchX = touch.clientX;
-                lastTouchY = touch.clientY;
+                const rect = canvas.getBoundingClientRect();
+                lastTouchX = touch.clientX - rect.left;
+                lastTouchY = touch.clientY - rect.top;
             }, { passive: false });
 
             // 处理触摸移动
@@ -1590,17 +1588,26 @@
                 // 更新游戏核心位置
                 if (gameState.cores && gameState.cores.length > 0) {
                     gameState.cores.forEach(core => {
-                        core.targetX = Math.max(core.size, Math.min(canvas.width - core.size, currentX));
-                        core.targetY = Math.max(core.size, Math.min(canvas.height - core.size, currentY));
+                        // 直接设置目标位置，不使用平滑移动
+                        core.x = Math.max(core.size, Math.min(canvas.width - core.size, currentX));
+                        core.y = Math.max(core.size, Math.min(canvas.height - core.size, currentY));
+                        core.targetX = core.x;
+                        core.targetY = core.y;
                     });
                 }
 
-                lastTouchX = touch.clientX;
-                lastTouchY = touch.clientY;
+                lastTouchX = currentX;
+                lastTouchY = currentY;
             }, { passive: false });
 
             // 处理触摸结束
             canvas.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                isDragging = false;
+            }, { passive: false });
+
+            // 处理触摸取消
+            canvas.addEventListener('touchcancel', function(e) {
                 e.preventDefault();
                 isDragging = false;
             }, { passive: false });
