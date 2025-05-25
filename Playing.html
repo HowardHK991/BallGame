@@ -330,7 +330,7 @@
         /* 移动端按钮样式 */
         .mobile-controls {
             position: fixed;
-            bottom: 100px;
+            bottom: 20px;
             right: 20px;
             display: none;
             flex-direction: column;
@@ -339,8 +339,8 @@
         }
 
         .mobile-button {
-            width: 50px;
-            height: 50px;
+            width: 60px;
+            height: 60px;
             background: rgba(255, 255, 255, 0.2);
             border: 2px solid rgba(255, 255, 255, 0.5);
             border-radius: 50%;
@@ -348,13 +348,59 @@
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 20px;
+            font-size: 24px;
             touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .mobile-button:active {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        /* 移动端功能按钮 */
+        .mobile-functions {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            display: none;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .function-button {
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            border: 1px solid #4CAF50;
+            border-radius: 5px;
+            font-size: 14px;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .function-button:active {
+            background: rgba(76, 175, 80, 0.4);
         }
 
         @media (max-width: 768px) {
-            #virtualJoystick, .mobile-controls {
-                display: block;
+            .mobile-controls, .mobile-functions {
+                display: flex;
+            }
+
+            #infoPanel {
+                width: 100%;
+                height: auto;
+                position: fixed;
+                bottom: 100px;
+                top: auto;
+                padding: 10px;
+                font-size: 12px;
+            }
+
+            #bgToggle, #inertiaToggle, #colorToggle {
+                display: none;
             }
         }
     </style>
@@ -488,6 +534,13 @@
         <div class="effect-item" id="effectSensitive">灵敏: 0/10</div>
         <div class="effect-item" id="effectPrecise">精准: 0/20</div>
         <div class="effect-item" id="effectFocused">集中注意: 0/30</div>
+    </div>
+
+    <!-- 移动端功能按钮 -->
+    <div class="mobile-functions">
+        <button class="function-button" id="bgToggleMobile">切换背景</button>
+        <button class="function-button" id="inertiaToggleMobile">惯性</button>
+        <button class="function-button" id="colorToggleMobile">变色</button>
     </div>
 
     <script>
@@ -1510,80 +1563,47 @@
 
         // 添加移动端控制支持
         function setupMobileControls() {
-            const joystick = document.getElementById('virtualJoystick');
-            const knob = document.getElementById('joystickKnob');
+            const canvas = document.getElementById('gameCanvas');
             let isDragging = false;
-            let joystickCenter = { x: 0, y: 0 };
-            let joystickRadius = 50;
-
-            // 设置虚拟摇杆
-            function setupJoystick() {
-                const rect = joystick.getBoundingClientRect();
-                joystickCenter = {
-                    x: rect.left + rect.width / 2,
-                    y: rect.top + rect.height / 2
-                };
-                joystickRadius = rect.width / 2;
-            }
+            let lastTouchX = 0;
+            let lastTouchY = 0;
 
             // 处理触摸开始
-            function handleTouchStart(e) {
+            canvas.addEventListener('touchstart', function(e) {
                 e.preventDefault();
                 isDragging = true;
-                setupJoystick();
-                updateJoystickPosition(e.touches[0].clientX, e.touches[0].clientY);
-            }
+                const touch = e.touches[0];
+                lastTouchX = touch.clientX;
+                lastTouchY = touch.clientY;
+            }, { passive: false });
 
             // 处理触摸移动
-            function handleTouchMove(e) {
+            canvas.addEventListener('touchmove', function(e) {
                 e.preventDefault();
-                if (isDragging) {
-                    updateJoystickPosition(e.touches[0].clientX, e.touches[0].clientY);
-                }
-            }
+                if (!isDragging) return;
 
-            // 处理触摸结束
-            function handleTouchEnd(e) {
-                e.preventDefault();
-                isDragging = false;
-                resetJoystick();
-            }
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                const currentX = touch.clientX - rect.left;
+                const currentY = touch.clientY - rect.top;
 
-            // 更新摇杆位置
-            function updateJoystickPosition(touchX, touchY) {
-                const dx = touchX - joystickCenter.x;
-                const dy = touchY - joystickCenter.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                const angle = Math.atan2(dy, dx);
-
-                // 限制摇杆移动范围
-                const limitedDistance = Math.min(distance, joystickRadius);
-                const limitedX = Math.cos(angle) * limitedDistance;
-                const limitedY = Math.sin(angle) * limitedDistance;
-
-                // 更新摇杆位置
-                knob.style.transform = `translate(${limitedX}px, ${limitedY}px)`;
-
-                // 更新游戏核心移动
+                // 更新游戏核心位置
                 if (gameState.cores && gameState.cores.length > 0) {
-                    const moveX = limitedX / joystickRadius;
-                    const moveY = limitedY / joystickRadius;
                     gameState.cores.forEach(core => {
-                        core.targetX = Math.max(core.size, Math.min(canvas.width - core.size, core.x + moveX * 10));
-                        core.targetY = Math.max(core.size, Math.min(canvas.height - core.size, core.y + moveY * 10));
+                        core.targetX = Math.max(core.size, Math.min(canvas.width - core.size, currentX));
+                        core.targetY = Math.max(core.size, Math.min(canvas.height - core.size, currentY));
                     });
                 }
-            }
 
-            // 重置摇杆位置
-            function resetJoystick() {
-                knob.style.transform = 'translate(-50%, -50%)';
-            }
+                lastTouchX = touch.clientX;
+                lastTouchY = touch.clientY;
+            }, { passive: false });
 
-            // 添加触摸事件监听器
-            joystick.addEventListener('touchstart', handleTouchStart, { passive: false });
-            joystick.addEventListener('touchmove', handleTouchMove, { passive: false });
-            joystick.addEventListener('touchend', handleTouchEnd, { passive: false });
+            // 处理触摸结束
+            canvas.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                isDragging = false;
+            }, { passive: false });
 
             // 设置移动端按钮
             document.getElementById('shieldButton').addEventListener('touchstart', (e) => {
@@ -1604,6 +1624,29 @@
             document.getElementById('invincibleButton').addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 activateInvincible();
+            });
+
+            // 设置移动端功能按钮
+            document.getElementById('bgToggleMobile').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                gameState.useCustomBg = !gameState.useCustomBg;
+                this.classList.toggle('active');
+                this.textContent = gameState.useCustomBg ? '切换背景' : '恢复灰色';
+            });
+
+            document.getElementById('inertiaToggleMobile').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                gameState.inertiaEnabled = !gameState.inertiaEnabled;
+                this.classList.toggle('active');
+                this.textContent = gameState.inertiaEnabled ? '惯性' : '无惯性';
+                gameState.coreSmoothing = gameState.inertiaEnabled ? 0.15 : 1;
+            });
+
+            document.getElementById('colorToggleMobile').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                gameState.colorMode = !gameState.colorMode;
+                this.classList.toggle('active');
+                this.textContent = gameState.colorMode ? '恢复原色' : '变色';
             });
         }
 
