@@ -140,9 +140,48 @@
         .score-item span {
             margin: 0 10px;
         }
+
+        /* 音乐控制按钮样式 */
+        #musicToggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            border: 1px solid #4CAF50;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        #musicToggle:hover {
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        #musicToggle.active {
+            background: rgba(76, 175, 80, 0.4);
+        }
+
+        #musicToggle::before {
+            content: '🔊';
+            font-size: 20px;
+        }
+
+        #musicToggle.muted::before {
+            content: '🔇';
+        }
     </style>
 </head>
 <body>
+    <!-- 添加音乐控制按钮 -->
+    <button id="musicToggle" class="active"></button>
+
     <div class="container">
         <h1>核心防御</h1>
         
@@ -153,11 +192,10 @@
         </div>
 
         <div class="nickname-input">
-            <input type="text" id="nickname" placeholder="输入昵称" maxlength="10">
+            <input type="text" id="nickname" placeholder="输入昵称（可选）" maxlength="10">
         </div>
 
-        <button class="start-button" id="startButton" disabled>开始游戏</button>
-        <button class="help-button" onclick="location.href='Help.html'">游戏规则</button>
+        <button class="help-button" onclick="showRules()">游戏规则</button>
 
         <div class="high-scores">
             <h2>最高分排行榜</h2>
@@ -242,7 +280,8 @@
 
         // 检查是否可以开始游戏
         function checkStartButton() {
-            startButton.disabled = !selectedMode || !nicknameInput.value.trim();
+            // 移除开始按钮的禁用状态检查
+            startButton.style.display = 'none';
         }
 
         // 模式选择
@@ -251,17 +290,10 @@
                 modeButtons.forEach(btn => btn.classList.remove('selected'));
                 button.classList.add('selected');
                 selectedMode = button.dataset.mode;
-                checkStartButton();
-            });
-        });
-
-        // 昵称输入
-        nicknameInput.addEventListener('input', checkStartButton);
-
-        // 开始游戏
-        startButton.addEventListener('click', () => {
-            const nickname = nicknameInput.value.trim();
-            if (nickname && selectedMode) {
+                
+                // 获取昵称（如果未填写则使用默认值）
+                const nickname = nicknameInput.value.trim() || '默认用户';
+                
                 // 保存昵称和模式
                 localStorage.setItem('playerNickname', nickname);
                 localStorage.setItem('gameMode', selectedMode);
@@ -269,16 +301,164 @@
                     nickname: nickname,
                     mode: selectedMode
                 });
-                // 跳转到游戏页面
+                
+                // 直接跳转到游戏页面
                 window.location.href = 'Playing.html';
-            }
+            });
         });
 
         // 页面加载时加载最高分
         window.addEventListener('load', function() {
             console.log('页面加载完成，开始加载最高分');
             loadHighScores();
+
+            // 初始化音乐控制
+            const musicToggle = document.getElementById('musicToggle');
+            let bgMusic;
+            
+            // 预加载音频
+            function preloadAudio() {
+                return new Promise((resolve, reject) => {
+                    bgMusic = new Audio('music/beethoven_virus.mp3');
+                    bgMusic.loop = true;
+                    
+                    // 设置音频加载事件
+                    bgMusic.addEventListener('canplaythrough', () => {
+                        console.log('音频加载完成');
+                        resolve(bgMusic);
+                    });
+                    
+                    bgMusic.addEventListener('error', (e) => {
+                        console.error('音频加载失败:', e);
+                        reject(e);
+                    });
+                    
+                    // 开始加载音频
+                    bgMusic.load();
+                });
+            }
+
+            // 初始化音频
+            preloadAudio().then(audio => {
+                // 从sessionStorage获取播放位置
+                const musicData = sessionStorage.getItem('bgMusic');
+                if (musicData) {
+                    audio.currentTime = parseFloat(musicData);
+                }
+                
+                // 从localStorage读取音乐状态
+                const isMusicMuted = localStorage.getItem('isMusicMuted') === 'true';
+                if (!isMusicMuted) {
+                    audio.play().catch(error => {
+                        console.log('自动播放被阻止，等待用户交互');
+                    });
+                } else {
+                    musicToggle.classList.add('muted');
+                }
+
+                // 音乐控制按钮点击事件
+                musicToggle.addEventListener('click', () => {
+                    if (audio.paused) {
+                        audio.play();
+                        musicToggle.classList.remove('muted');
+                        localStorage.setItem('isMusicMuted', 'false');
+                    } else {
+                        audio.pause();
+                        musicToggle.classList.add('muted');
+                        localStorage.setItem('isMusicMuted', 'true');
+                    }
+                });
+
+                // 定期保存音乐播放位置
+                setInterval(() => {
+                    if (!audio.paused) {
+                        sessionStorage.setItem('bgMusic', audio.currentTime);
+                    }
+                }, 1000);
+            }).catch(error => {
+                console.error('音频初始化失败:', error);
+            });
         });
+
+        // 显示游戏规则
+        function showRules() {
+            const rules = `
+游戏规则：
+
+1. 游戏模式：
+   - 简单模式：1个固定大小核心
+   - 中等模式：1个贪吃蛇核心（长度随得分增加）
+   - 困难模式：1个呼吸核心（大小周期性变化）
+
+2. 核心特性：
+   - 简单模式：固定大小核心
+   - 中等模式：贪吃蛇核心（每得10分增加1个原始直径长度）
+   - 困难模式：呼吸核心（大小在0.5-3倍原始直径之间变化）
+
+3. 得分规则：
+   - 绿色投射体：+5分
+   - 蓝色投射体：+8分
+   - 黄色投射体：+3分
+   - 紫色投射体：-6分
+   - 变色投射体：+7分
+   - 红色投射体：-10分
+   - 黑色投射体：随机分数（-5分或+5分）
+
+4. 生命值系统：
+   - 初始生命值：100
+   - 只有红色投射体造成伤害
+   - 生命值为0时游戏结束
+
+5. 道具系统：
+   - 护盾（空格键）：免疫伤害5秒
+   - 冻结（F键）：暂停投射体5秒
+   - 双倍分数（D键）：得分翻倍8秒
+   - 无敌（I键）：免疫伤害3秒
+
+6. 特殊机制：
+   - 投射体裂变：30%概率分裂为2-5个
+   - 难度递增：每10秒速度增加0.2
+   - 分数变化：每15秒随机变化
+
+7. 控制方式：
+   - 鼠标移动：控制核心位置
+   - 空格键：激活护盾
+   - F键：激活冻结
+   - D键：激活双倍分数
+   - I键：激活无敌
+   - ESC键：返回结算页面
+
+按回车键继续...`;
+
+            const rulesDiv = document.createElement('div');
+            rulesDiv.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0, 0, 0, 0.9);
+                padding: 20px;
+                border: 2px solid #4CAF50;
+                border-radius: 10px;
+                color: #fff;
+                max-width: 80%;
+                max-height: 80vh;
+                overflow-y: auto;
+                white-space: pre-line;
+                z-index: 1000;
+            `;
+            rulesDiv.textContent = rules;
+            document.body.appendChild(rulesDiv);
+
+            // 添加回车键监听
+            function handleKeyPress(e) {
+                if (e.key === 'Enter') {
+                    document.body.removeChild(rulesDiv);
+                    document.removeEventListener('keydown', handleKeyPress);
+                }
+            }
+            document.addEventListener('keydown', handleKeyPress);
+        }
     </script>
 </body>
 </html> 
