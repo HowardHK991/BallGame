@@ -327,7 +327,7 @@
             touch-action: none;
         }
 
-        /* 移动端按钮样式 */
+        /* 移动端控制按钮样式 */
         .mobile-controls {
             position: fixed;
             bottom: 20px;
@@ -384,8 +384,34 @@
             background: rgba(76, 175, 80, 0.4);
         }
 
+        /* 移动端游戏控制按钮 */
+        .mobile-game-controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            display: none;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .game-control-button {
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            border: 1px solid #ff4444;
+            border-radius: 5px;
+            font-size: 14px;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .game-control-button:active {
+            background: rgba(255, 68, 68, 0.4);
+        }
+
         @media (max-width: 768px) {
-            .mobile-controls, .mobile-functions {
+            .mobile-controls, .mobile-functions, .mobile-game-controls {
                 display: flex;
             }
 
@@ -413,12 +439,25 @@
         <div id="joystickKnob"></div>
     </div>
 
-    <!-- 添加移动端控制按钮 -->
+    <!-- 移动端控制按钮 -->
     <div class="mobile-controls">
         <button class="mobile-button" id="shieldButton">🛡️</button>
         <button class="mobile-button" id="freezeButton">❄️</button>
         <button class="mobile-button" id="doubleButton">2x</button>
         <button class="mobile-button" id="invincibleButton">💫</button>
+    </div>
+
+    <!-- 移动端功能按钮 -->
+    <div class="mobile-functions">
+        <button class="function-button" id="bgToggleMobile">切换背景</button>
+        <button class="function-button" id="inertiaToggleMobile">惯性</button>
+        <button class="function-button" id="colorToggleMobile">变色</button>
+    </div>
+
+    <!-- 移动端游戏控制按钮 -->
+    <div class="mobile-game-controls">
+        <button class="game-control-button" id="restartButton">重新开始</button>
+        <button class="game-control-button" id="exitButton">退出游戏</button>
     </div>
 
     <!-- 添加音乐控制按钮 -->
@@ -534,13 +573,6 @@
         <div class="effect-item" id="effectSensitive">灵敏: 0/10</div>
         <div class="effect-item" id="effectPrecise">精准: 0/20</div>
         <div class="effect-item" id="effectFocused">集中注意: 0/30</div>
-    </div>
-
-    <!-- 移动端功能按钮 -->
-    <div class="mobile-functions">
-        <button class="function-button" id="bgToggleMobile">切换背景</button>
-        <button class="function-button" id="inertiaToggleMobile">惯性</button>
-        <button class="function-button" id="colorToggleMobile">变色</button>
     </div>
 
     <script>
@@ -1558,7 +1590,7 @@
             }
         }
 
-        // 添加移动端控制支持
+        // 修改移动端控制支持
         function setupMobileControls() {
             const canvas = document.getElementById('gameCanvas');
             let isDragging = false;
@@ -1615,22 +1647,30 @@
             // 设置移动端按钮
             document.getElementById('shieldButton').addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                activateShield();
+                if (gameState.powers.shield.uses > 0 && gameState.powers.shield.cooldown <= 0) {
+                    activateShield();
+                }
             });
 
             document.getElementById('freezeButton').addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                activateFreeze();
+                if (gameState.powers.freeze.uses > 0 && gameState.powers.freeze.cooldown <= 0) {
+                    activateFreeze();
+                }
             });
 
             document.getElementById('doubleButton').addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                activateDoubleScore();
+                if (gameState.powers.double.uses > 0 && gameState.powers.double.cooldown <= 0) {
+                    activateDoubleScore();
+                }
             });
 
             document.getElementById('invincibleButton').addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                activateInvincible();
+                if (gameState.powers.invincible.uses > 0 && gameState.powers.invincible.cooldown <= 0) {
+                    activateInvincible();
+                }
             });
 
             // 设置移动端功能按钮
@@ -1654,6 +1694,18 @@
                 gameState.colorMode = !gameState.colorMode;
                 this.classList.toggle('active');
                 this.textContent = gameState.colorMode ? '恢复原色' : '变色';
+            });
+
+            // 设置移动端游戏控制按钮
+            document.getElementById('restartButton').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                gameState.isGameRunning = false;
+                window.location.reload();
+            });
+
+            document.getElementById('exitButton').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                endGame();
             });
         }
 
