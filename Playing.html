@@ -15,6 +15,7 @@
             height: 100vh;
             font-family: Arial, sans-serif;
             cursor: none; /* 隐藏光标 */
+            touch-action: none; /* 防止移动端默认触摸行为 */
         }
 
         #gameCanvas {
@@ -255,11 +256,125 @@
             50% { box-shadow: 0 0 20px rgba(76, 175, 80, 0.8); }
             100% { box-shadow: 0 0 5px rgba(76, 175, 80, 0.5); }
         }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            #infoPanel {
+                width: 100%;
+                height: auto;
+                position: fixed;
+                bottom: 0;
+                top: auto;
+                padding: 10px;
+                font-size: 12px;
+            }
+
+            .panel-section {
+                padding: 8px;
+                margin-bottom: 5px;
+            }
+
+            .panel-section h2 {
+                font-size: 14px;
+                margin: 0 0 5px 0;
+            }
+
+            .info-item, .power-status, .projectile-score {
+                font-size: 12px;
+                margin: 3px 0;
+            }
+
+            #gameCanvas {
+                width: 100%;
+                height: 100%;
+            }
+
+            #bgToggle, #inertiaToggle, #colorToggle, #autoAvoid {
+                padding: 8px 15px;
+                font-size: 12px;
+                bottom: 10px;
+            }
+
+            #bgToggle { left: 10px; }
+            #inertiaToggle { left: 120px; }
+            #colorToggle { left: 230px; }
+            #autoAvoid { left: 340px; }
+        }
+
+        /* 虚拟摇杆样式 */
+        #virtualJoystick {
+            position: fixed;
+            bottom: 100px;
+            left: 50px;
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: none;
+            z-index: 1000;
+            touch-action: none;
+        }
+
+        #joystickKnob {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            touch-action: none;
+        }
+
+        /* 移动端按钮样式 */
+        .mobile-controls {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .mobile-button {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            touch-action: none;
+        }
+
+        @media (max-width: 768px) {
+            #virtualJoystick, .mobile-controls {
+                display: block;
+            }
+        }
     </style>
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
     
+    <!-- 添加虚拟摇杆 -->
+    <div id="virtualJoystick">
+        <div id="joystickKnob"></div>
+    </div>
+
+    <!-- 添加移动端控制按钮 -->
+    <div class="mobile-controls">
+        <button class="mobile-button" id="shieldButton">🛡️</button>
+        <button class="mobile-button" id="freezeButton">❄️</button>
+        <button class="mobile-button" id="doubleButton">2x</button>
+        <button class="mobile-button" id="invincibleButton">💫</button>
+    </div>
+
     <!-- 添加音乐控制按钮 -->
     <button id="musicToggle" class="active"></button>
     
@@ -423,13 +538,21 @@
                 negativeScoreTotal: 0,
                 lastPositiveScore: 0,
                 effects: []
-            }
+            },
+            minProjectiles: 15,
+            maxProjectiles: 40
         };
 
         // 设置画布大小
         function resizeCanvas() {
-            canvas.width = window.innerWidth - 300; // 减去信息面板宽度
-            canvas.height = window.innerHeight;
+            const isMobile = isMobileDevice();
+            if (isMobile) {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            } else {
+                canvas.width = window.innerWidth - 300;
+                canvas.height = window.innerHeight;
+            }
         }
 
         // 添加鼠标移动事件监听器
@@ -604,6 +727,21 @@
             gameState.mouseX = canvas.width / 2;
             gameState.mouseY = canvas.height / 2;
 
+            // 设置投射体参数
+            gameState.minProjectiles = 15; // 最小投射体数量
+            gameState.maxProjectiles = 40; // 最大投射体数量
+            gameState.projectileInterval = 500; // 基础生成间隔（毫秒）
+
+            // 初始生成一些投射体
+            for (let i = 0; i < gameState.minProjectiles; i++) {
+                generateProjectile();
+            }
+
+            // 设置移动端控制
+            if (isMobileDevice()) {
+                setupMobileControls();
+            }
+
             console.log('Game initialized, starting game loop...');
             // 启动游戏循环
             requestAnimationFrame(gameLoop);
@@ -616,6 +754,11 @@
                 return;
             }
             gameState.lastProjectileTime = now;
+
+            // 如果当前投射体数量已经达到上限，移除最早的一个
+            if (gameState.projectiles.length >= gameState.maxProjectiles) {
+                gameState.projectiles.shift();
+            }
 
             // 随机选择生成位置（屏幕四边）
             const side = Math.floor(Math.random() * 4);
@@ -691,11 +834,6 @@
             }
 
             gameState.projectiles.push(projectile);
-
-            // 限制最大投射体数量
-            if (gameState.projectiles.length > 20) {
-                gameState.projectiles.shift();
-            }
         }
 
         // 游戏主循环
@@ -761,6 +899,19 @@
             if (now - gameState.lastProjectileTime >= gameState.projectileInterval) {
                 generateProjectile();
                 gameState.lastProjectileTime = now;
+            }
+
+            // 确保投射体数量在合理范围内
+            while (gameState.projectiles.length > gameState.maxProjectiles) {
+                gameState.projectiles.shift();
+            }
+
+            // 如果投射体数量太少，立即生成新的
+            if (gameState.projectiles.length < gameState.minProjectiles) {
+                const needed = gameState.minProjectiles - gameState.projectiles.length;
+                for (let i = 0; i < needed; i++) {
+                    generateProjectile();
+                }
             }
 
             // 更新投射体
@@ -1357,6 +1508,110 @@
             }
         }
 
+        // 添加移动端控制支持
+        function setupMobileControls() {
+            const joystick = document.getElementById('virtualJoystick');
+            const knob = document.getElementById('joystickKnob');
+            let isDragging = false;
+            let joystickCenter = { x: 0, y: 0 };
+            let joystickRadius = 50;
+
+            // 设置虚拟摇杆
+            function setupJoystick() {
+                const rect = joystick.getBoundingClientRect();
+                joystickCenter = {
+                    x: rect.left + rect.width / 2,
+                    y: rect.top + rect.height / 2
+                };
+                joystickRadius = rect.width / 2;
+            }
+
+            // 处理触摸开始
+            function handleTouchStart(e) {
+                e.preventDefault();
+                isDragging = true;
+                setupJoystick();
+                updateJoystickPosition(e.touches[0].clientX, e.touches[0].clientY);
+            }
+
+            // 处理触摸移动
+            function handleTouchMove(e) {
+                e.preventDefault();
+                if (isDragging) {
+                    updateJoystickPosition(e.touches[0].clientX, e.touches[0].clientY);
+                }
+            }
+
+            // 处理触摸结束
+            function handleTouchEnd(e) {
+                e.preventDefault();
+                isDragging = false;
+                resetJoystick();
+            }
+
+            // 更新摇杆位置
+            function updateJoystickPosition(touchX, touchY) {
+                const dx = touchX - joystickCenter.x;
+                const dy = touchY - joystickCenter.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const angle = Math.atan2(dy, dx);
+
+                // 限制摇杆移动范围
+                const limitedDistance = Math.min(distance, joystickRadius);
+                const limitedX = Math.cos(angle) * limitedDistance;
+                const limitedY = Math.sin(angle) * limitedDistance;
+
+                // 更新摇杆位置
+                knob.style.transform = `translate(${limitedX}px, ${limitedY}px)`;
+
+                // 更新游戏核心移动
+                if (gameState.cores && gameState.cores.length > 0) {
+                    const moveX = limitedX / joystickRadius;
+                    const moveY = limitedY / joystickRadius;
+                    gameState.cores.forEach(core => {
+                        core.targetX = Math.max(core.size, Math.min(canvas.width - core.size, core.x + moveX * 10));
+                        core.targetY = Math.max(core.size, Math.min(canvas.height - core.size, core.y + moveY * 10));
+                    });
+                }
+            }
+
+            // 重置摇杆位置
+            function resetJoystick() {
+                knob.style.transform = 'translate(-50%, -50%)';
+            }
+
+            // 添加触摸事件监听器
+            joystick.addEventListener('touchstart', handleTouchStart, { passive: false });
+            joystick.addEventListener('touchmove', handleTouchMove, { passive: false });
+            joystick.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+            // 设置移动端按钮
+            document.getElementById('shieldButton').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                activateShield();
+            });
+
+            document.getElementById('freezeButton').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                activateFreeze();
+            });
+
+            document.getElementById('doubleButton').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                activateDoubleScore();
+            });
+
+            document.getElementById('invincibleButton').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                activateInvincible();
+            });
+        }
+
+        // 检测设备类型
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+
         // 页面加载完成后初始化游戏
         window.addEventListener('load', function() {
             console.log('Page loaded, setting up game...');
@@ -1430,6 +1685,10 @@
                 console.error('音频初始化失败:', error);
             });
         });
+
+        // 添加窗口大小改变事件监听
+        window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('orientationchange', resizeCanvas);
     </script>
 </body>
 </html> 
