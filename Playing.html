@@ -793,7 +793,7 @@
 
             // 重置游戏状态
             gameState.score = 0;
-            gameState.health = 100;
+            gameState.health = 20;
             gameState.speed = 1.0;
             gameState.time = 0;
             gameState.projectiles = [];
@@ -825,6 +825,10 @@
             // 设置移动端控制
             if (isMobileDevice()) {
                 setupMobileControls();
+                // 隐藏PC端按钮
+                document.getElementById('bgToggle').style.display = 'none';
+                document.getElementById('inertiaToggle').style.display = 'none';
+                document.getElementById('colorToggle').style.display = 'none';
             }
 
             console.log('Game initialized, starting game loop...');
@@ -1742,7 +1746,7 @@
 
         // 检测设备类型
         function isMobileDevice() {
-            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
         }
 
         // 页面加载完成后初始化游戏
