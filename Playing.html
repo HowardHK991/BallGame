@@ -961,19 +961,20 @@
             updatePowerCooldowns();
 
             // 更新核心位置
-            if (gameState.cores && gameState.cores.length > 0) {
+            if (gameState.cores && gameState.cores.length > 0 && !isMobileDevice()) {
                 gameState.cores.forEach(core => {
-                    if (!isMobileDevice()) {
-                        // PC端使用平滑移动
-                        if (gameState.inertiaEnabled) {
-                            core.x += (core.targetX - core.x) * gameState.coreSmoothing;
-                            core.y += (core.targetY - core.y) * gameState.coreSmoothing;
-                        } else {
-                            core.x = core.targetX;
-                            core.y = core.targetY;
-                        }
+                    // 设置目标位置
+                    core.targetX = Math.max(core.size, Math.min(canvas.width - core.size, gameState.mouseX));
+                    core.targetY = Math.max(core.size, Math.min(canvas.height - core.size, gameState.mouseY));
+                    
+                    // 根据惯性设置更新位置
+                    if (gameState.inertiaEnabled) {
+                        core.x += (core.targetX - core.x) * gameState.coreSmoothing;
+                        core.y += (core.targetY - core.y) * gameState.coreSmoothing;
+                    } else {
+                        core.x = core.targetX;
+                        core.y = core.targetY;
                     }
-                    // 移动端在touchmove事件中直接更新位置
                 });
             }
 
@@ -1605,6 +1606,16 @@
                 const rect = canvas.getBoundingClientRect();
                 lastTouchX = touch.clientX - rect.left;
                 lastTouchY = touch.clientY - rect.top;
+                
+                // 直接更新核心位置
+                if (gameState.cores && gameState.cores.length > 0) {
+                    gameState.cores.forEach(core => {
+                        core.x = Math.max(core.size, Math.min(canvas.width - core.size, lastTouchX));
+                        core.y = Math.max(core.size, Math.min(canvas.height - core.size, lastTouchY));
+                        core.targetX = core.x;
+                        core.targetY = core.y;
+                    });
+                }
             }, { passive: false });
 
             // 处理触摸移动
@@ -1617,10 +1628,9 @@
                 const currentX = touch.clientX - rect.left;
                 const currentY = touch.clientY - rect.top;
 
-                // 更新游戏核心位置
+                // 直接更新核心位置
                 if (gameState.cores && gameState.cores.length > 0) {
                     gameState.cores.forEach(core => {
-                        // 直接设置目标位置，不使用平滑移动
                         core.x = Math.max(core.size, Math.min(canvas.width - core.size, currentX));
                         core.y = Math.max(core.size, Math.min(canvas.height - core.size, currentY));
                         core.targetX = core.x;
@@ -1645,31 +1655,52 @@
             }, { passive: false });
 
             // 设置移动端按钮
-            document.getElementById('shieldButton').addEventListener('touchstart', (e) => {
+            const shieldButton = document.getElementById('shieldButton');
+            const freezeButton = document.getElementById('freezeButton');
+            const doubleButton = document.getElementById('doubleButton');
+            const invincibleButton = document.getElementById('invincibleButton');
+
+            // 更新按钮状态
+            function updateButtonStates() {
+                shieldButton.style.opacity = (gameState.powers.shield.uses > 0 && gameState.powers.shield.cooldown <= 0) ? '1' : '0.5';
+                freezeButton.style.opacity = (gameState.powers.freeze.uses > 0 && gameState.powers.freeze.cooldown <= 0) ? '1' : '0.5';
+                doubleButton.style.opacity = (gameState.powers.double.uses > 0 && gameState.powers.double.cooldown <= 0) ? '1' : '0.5';
+                invincibleButton.style.opacity = (gameState.powers.invincible.uses > 0 && gameState.powers.invincible.cooldown <= 0) ? '1' : '0.5';
+            }
+
+            // 定期更新按钮状态
+            setInterval(updateButtonStates, 100);
+
+            // 设置按钮事件
+            shieldButton.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 if (gameState.powers.shield.uses > 0 && gameState.powers.shield.cooldown <= 0) {
                     activateShield();
+                    updateButtonStates();
                 }
             });
 
-            document.getElementById('freezeButton').addEventListener('touchstart', (e) => {
+            freezeButton.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 if (gameState.powers.freeze.uses > 0 && gameState.powers.freeze.cooldown <= 0) {
                     activateFreeze();
+                    updateButtonStates();
                 }
             });
 
-            document.getElementById('doubleButton').addEventListener('touchstart', (e) => {
+            doubleButton.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 if (gameState.powers.double.uses > 0 && gameState.powers.double.cooldown <= 0) {
                     activateDoubleScore();
+                    updateButtonStates();
                 }
             });
 
-            document.getElementById('invincibleButton').addEventListener('touchstart', (e) => {
+            invincibleButton.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 if (gameState.powers.invincible.uses > 0 && gameState.powers.invincible.cooldown <= 0) {
                     activateInvincible();
+                    updateButtonStates();
                 }
             });
 
